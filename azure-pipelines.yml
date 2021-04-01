@@ -1,0 +1,41 @@
+
+parameters:
+  - name: env
+    displayName: Target Environment
+    type: string
+    default: DEV
+    values:
+    - DEV
+    - TEST
+    - PROD
+
+trigger:
+- master
+
+pool:
+  name: DemoEnvironmentAgent
+
+steps:
+- script: |
+   call c:\apps\liquibase\liquibase.bat --username=SPACELYINS_${{ parameters.env }} --password=$(LBORAPASSWORD)  --url jdbc:oracle:thin:@localhost:1521:ORCL --labels=$(labels) validate
+   call c:\apps\liquibase\liquibase.bat --username=SPACELYINS_${{ parameters.env }} --password=$(LBORAPASSWORD)  --url jdbc:oracle:thin:@localhost:1521:ORCL tag JOBID_$(Build.BuildId)
+   call c:\apps\liquibase\liquibase.bat --username=SPACELYINS_${{ parameters.env }} --password=$(LBORAPASSWORD)  --url jdbc:oracle:thin:@localhost:1521:ORCL --labels=$(labels) status --verbose
+  workingDirectory: Liquibase
+  displayName: 'Verify Changes'
+
+- script: |
+   call c:\apps\liquibase\liquibase.bat --username=SPACELYINS_${{ parameters.env }} --password=$(LBORAPASSWORD)  --url jdbc:oracle:thin:@localhost:1521:ORCL --labels=$(labels) updateSql
+   call c:\apps\liquibase\liquibase.bat --username=SPACELYINS_${{ parameters.env }} --password=$(LBORAPASSWORD)  --url jdbc:oracle:thin:@localhost:1521:ORCL --labels=$(labels) update
+  workingDirectory: Liquibase
+  displayName: 'Deploy Changes'
+
+- script: |
+   call c:\apps\liquibase\liquibase.bat --username=SPACELYINS_${{ parameters.env }} --password=$(LBORAPASSWORD)  --url jdbc:oracle:thin:@localhost:1521:ORCL --labels=$(labels) rollbackSQL JOBID_$(Build.BuildId)
+   call c:\apps\liquibase\liquibase.bat --username=SPACELYINS_${{ parameters.env }} --password=$(LBORAPASSWORD)  --url jdbc:oracle:thin:@localhost:1521:ORCL --labels=$(labels) rollback JOBID_$(Build.BuildId)
+  workingDirectory: Liquibase
+  displayName: 'Verify Deployment'
+
+- script: |
+   call c:\apps\liquibase\liquibase.bat --username=SPACELYINS_${{ parameters.env }} --password=$(LBORAPASSWORD)  --url jdbc:oracle:thin:@localhost:1521:ORCL --labels=$(labels) update
+  workingDirectory: Liquibase
+  displayName: 'Finalize'
